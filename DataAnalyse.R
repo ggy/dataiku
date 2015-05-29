@@ -16,6 +16,7 @@ x.rp.pred <- predict(x.rp, type="class", newdata=newdata)
 x.rp.prob <- predict(x.rp, type="prob", newdata=newdata)
 
 require(party)
+# Foret
 x.cf <- cforest(formule, data=data, control = cforest_unbiased(mtry = ncol(data)-2))
 x.cf.pred <- predict(x.cf, newdata=newdata)
 x.cf.prob <-  1- unlist(treeresponse(x.cf, newdata), use.names=F)[seq(1,nrow(newdata)*2,2)]
@@ -51,18 +52,52 @@ x.rp.perf <- performance(x.rp.prob.rocr, "tpr","fpr")
 plot(x.rp.perf, col=2)
 
 # legend.
-legend(0.6, 0.6, c('rpart','bagging','svm'), 2:4)
+legend(0.6, 0.6, c('rpart', 'bagging','foret','svm'), 2:5)
 
 
 # bagging
 x.ip.prob.rocr <- prediction(x.ip.prob[,2], newdata$V42)
 x.ip.perf <- performance(x.ip.prob.rocr, "tpr","fpr")
-plot(x.ip.perf, col=5, add=TRUE)
+plot(x.ip.perf, col=3, add=TRUE)
+
+# foret
+x.cf.prob.rocr <- prediction(x.cf.prob, newdata$V42)
+x.cf.perf <- performance(x.cf.prob.rocr, "tpr","fpr")
+plot(x.cf.perf, col=4, add=TRUE)
 
 # svm
 x.svm.prob.rocr <- prediction(attr(x.svm.prob, "probabilities")[,2], newdata$V42)
 x.svm.perf <- performance(x.svm.prob.rocr, "tpr","fpr")
-plot(x.svm.perf, col=6, add=TRUE)
+plot(x.svm.perf, col=5, add=TRUE)
 
+######## *Convert Breast Cancer data into H2O*
+library(h2o)
+dat <- data  # remove the ID column
+localH2O = h2o.init(ip="127.0.0.1", port=54321, startH2O = FALSE)
+dat_h2o <- as.h2o(localH2O, dat, key = 'dat')
 
+######## *Import MNIST CSV as H2O*
+dat_h2o <- h2o.importFile(localH2O, path = ".../mnist_train.csv")
+
+######## *Using the DNN model for predictions*
+h2o_yhat_test <- h2o.predict(model, test_h2o)
+
+######## *Converting H2O format into data frame*
+df_yhat_test <- as.data.frame(h2o_yhat_test)
+
+######## Start a local cluster with 2GB RAM
+library(h2o)
+localH2O = h2o.init(ip = "localhost", port = 54321, startH2O = TRUE, 
+                    Xmx = '2g') 
+########Execute deeplearning
+
+model <- h2o.deeplearning( x = 2:785,  # column numbers for predictors
+                           y = 1,   # column number for label
+                           data = train_h2o, # data in H2O format
+                           activation = "TanhWithDropout", # or 'Tanh'
+                           input_dropout_ratio = 0.2, # % of inputs dropout
+                           hidden_dropout_ratios = c(0.5,0.5,0.5), # % for nodes dropout
+                           balance_classes = TRUE, 
+                           hidden = c(50,50,50), # three layers of 50 nodes
+                           epochs = 100) # max. no. of epochs
 
