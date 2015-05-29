@@ -5,18 +5,37 @@ library("rjson", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.1")
 
 library(h2o)
 
-localH2O = h2o.init(ip="192.168.28.138", port=54322)
+# The following two commands remove any previously installed H2O packages for R.
+if ("package:h2o" %in% search()) { detach("package:h2o", unload=TRUE) }
+if ("h2o" %in% rownames(installed.packages())) { remove.packages("h2o") }
 
-# Try to connect to a local H2O instance.
-# If not found, raise an error.
-localH2O = h2o.init(startH2O = FALSE)
+# Next, we download packages that H2O depends on.
+if (! ("methods" %in% rownames(installed.packages()))) { install.packages("methods") }
+if (! ("statmod" %in% rownames(installed.packages()))) { install.packages("statmod") }
+if (! ("stats" %in% rownames(installed.packages()))) { install.packages("stats") }
+if (! ("graphics" %in% rownames(installed.packages()))) { install.packages("graphics") }
+if (! ("RCurl" %in% rownames(installed.packages()))) { install.packages("RCurl") }
+if (! ("rjson" %in% rownames(installed.packages()))) { install.packages("rjson") }
+if (! ("tools" %in% rownames(installed.packages()))) { install.packages("tools") }
+if (! ("utils" %in% rownames(installed.packages()))) { install.packages("utils") }
 
-# Try to connect to a local H2O instance that is already running.
-# If not found, start a local H2O instance from R with 5 gigabytes of memory and the
-# default number of threads (two).
-localH2O = h2o.init(max_mem_size = "5g")
+# Now we download, install and initialize the H2O package for R.
+install.packages("h2o", type="source", repos=(c("http://h2o-release.s3.amazonaws.com/h2o/master/3024/R")))
 
-# Try to connect to a local H2O instance that is already running.
-# If not found, start a local H2O instance from R that uses as many threads as you
-# have CPUs and 5 gigabytes of memory.
-localH2O = h2o.init(nthreads = -1, max_mem_size = "5g")
+
+
+
+library(h2o)
+localH2O = h2o.init()
+
+
+train_h2o <- as.h2o(localH2O, data)
+test_h2o <- as.h2o(localH2O, newdata)
+
+
+
+
+########Execute deeplearning
+
+model_f <- h2o.randomForest( x = 1:41, y = 42, train_h2o)
+model_d <- h2o.deeplearning( x = 1:41, y = 42, train_h2o)
